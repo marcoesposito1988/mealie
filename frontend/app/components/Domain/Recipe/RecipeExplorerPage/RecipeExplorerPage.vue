@@ -16,6 +16,7 @@
         :title="$t('general.recipes')"
         :recipes="recipes"
         :query="searchQuery"
+        :group-by="groupBy"
         disable-sort
         @item-selected="onItemSelected"
         @replace-recipes="replaceRecipes"
@@ -44,6 +45,10 @@ const searchComponent = ref<InstanceType<typeof RecipeExplorerPageSearch>>();
 
 const searchQuery = computed(() => {
   return searchComponent.value?.passedQueryWithSeed || {};
+});
+
+const groupBy = computed(() => {
+  return searchComponent.value?.state?.groupBy || "";
 });
 
 function onSearchReady() {

@@ -19,7 +19,8 @@
       </div>
       <div class="search-row">
         <RecipeExplorerPageSearchFilters />
-        <!-- Sort Options -->
+
+        <!-- Group Options -->
         <v-menu
           offset-y
           nudge-bottom="3"
@@ -27,6 +28,44 @@
           <template #activator="{ props }">
             <v-btn
               class="ml-auto"
+              size="small"
+              color="accent"
+              v-bind="props"
+            >
+              <v-icon :start="!$vuetify.display.xs">
+                {{ groupIcon }}
+              </v-icon>
+              {{ $vuetify.display.xs ? null : groupText }}
+            </v-btn>
+          </template>
+          <v-card>
+            <v-list>
+              <v-list-item
+                v-for="v in groupable"
+                :key="v.name"
+                :active="state.groupBy === v.value"
+                slim
+                density="comfortable"
+                @click.stop="setGroupBy(v.value)"
+              >
+                <template #prepend>
+                  <v-icon>{{ v.icon }}</v-icon>
+                </template>
+                <template #title>
+                  <span>{{ v.name }}</span>
+                </template>
+              </v-list-item>
+            </v-list>
+          </v-card>
+        </v-menu>
+
+        <!-- Sort Options -->
+        <v-menu
+          offset-y
+          nudge-bottom="3"
+        >
+          <template #activator="{ props }">
+            <v-btn
               size="small"
               color="accent"
               v-bind="props"
@@ -157,6 +196,7 @@ const {
   reset,
   toggleOrderDirection,
   setOrderBy,
+  setGroupBy,
   setRandomOrderBy,
   filterItems,
   initialize,
@@ -165,6 +205,7 @@ const {
 defineExpose({
   passedQueryWithSeed,
   filterItems,
+  state,
 });
 
 onMounted(async () => {
@@ -176,6 +217,47 @@ onUnmounted(() => {
   // Clear the cache when component unmounts to ensure fresh state on remount
   clearRecipeExplorerSearchState(groupSlug.value);
 });
+
+const groupText = computed(() => {
+  const group = groupable.value.find(g => g.value === state.value.groupBy);
+  if (!group || !group.value) {
+    return i18n.t("general.group-by");
+  }
+  return `${i18n.t("general.group-by")}: ${group.name}`;
+});
+
+const groupIcon = computed(() => {
+  const group = groupable.value.find(g => g.value === state.value.groupBy);
+  return group && group.value ? group.icon : $globals.icons.organizers;
+});
+
+const groupable = computed(() => [
+  {
+    icon: $globals.icons.close,
+    name: i18n.t("general.none"),
+    value: "",
+  },
+  {
+    icon: $globals.icons.categories,
+    name: i18n.t("category.categories"),
+    value: "category",
+  },
+  {
+    icon: $globals.icons.tags,
+    name: i18n.t("tag.tags"),
+    value: "tag",
+  },
+  {
+    icon: $globals.icons.potSteam,
+    name: i18n.t("tool.tools"),
+    value: "tool",
+  },
+  {
+    icon: $globals.icons.foods,
+    name: i18n.t("general.foods"),
+    value: "food",
+  },
+]);
 
 const sortText = computed(() => {
   const orderBy = !isOwnGroup.value && state.value.orderBy === "last_made" ? "created_at" : state.value.orderBy;

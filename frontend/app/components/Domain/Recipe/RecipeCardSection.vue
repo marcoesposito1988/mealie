@@ -5,13 +5,13 @@
       class="align-center pb-2"
     >
       <v-icon
-        v-if="title"
+        v-if="!groupBy && title"
         size="large"
         start
       >
         {{ displayTitleIcon }}
       </v-icon>
-      <span class="text-headline-small">{{ title }}</span>
+      <span v-if="!groupBy && title" class="text-headline-small">{{ title }}</span>
       <v-spacer />
       <v-btn
         :icon="$vuetify.display.xs"
@@ -114,7 +114,7 @@
       />
     </v-row>
     <div v-if="recipes && ready">
-      <div class="mt-2">
+      <div v-if="!groupBy" class="mt-2">
         <v-row v-if="!useMobileCards">
           <v-col
             v-for="recipe in recipes"
@@ -160,6 +160,75 @@
           </v-col>
         </v-row>
       </div>
+      <div v-else class="mt-2">
+        <div
+          v-for="group in groupedRecipes"
+          :key="group.key"
+          class="mb-8"
+        >
+          <v-row class="align-center pb-2">
+            <v-icon
+              v-if="group.icon"
+              size="large"
+              start
+            >
+              {{ group.icon }}
+            </v-icon>
+            <span class="text-headline-small">{{ group.name }}</span>
+            <v-chip
+              class="ml-2"
+              size="small"
+              variant="tonal"
+            >
+              {{ group.recipes.length }}
+            </v-chip>
+          </v-row>
+          <v-row v-if="!useMobileCards">
+            <v-col
+              v-for="recipe in group.recipes"
+              :key="`${group.key}-${recipe.id!}`"
+              :sm="6"
+              :md="6"
+              :lg="4"
+              :xl="3"
+            >
+              <RecipeCard
+                :name="recipe.name!"
+                :description="recipe.description!"
+                :slug="recipe.slug!"
+                :rating="recipe.rating!"
+                :image="recipe.image!"
+                :tags="recipe.tags!"
+                :recipe-id="recipe.id!"
+              />
+            </v-col>
+          </v-row>
+          <v-row
+            v-else
+            density="comfortable"
+          >
+            <v-col
+              v-for="recipe in group.recipes"
+              :key="`${group.key}-${recipe.id!}`"
+              cols="12"
+              :sm="singleColumn ? '12' : '12'"
+              :md="singleColumn ? '12' : '6'"
+              :lg="singleColumn ? '12' : '4'"
+              :xl="singleColumn ? '12' : '3'"
+            >
+              <RecipeCardMobile
+                :name="recipe.name!"
+                :description="recipe.description!"
+                :slug="recipe.slug!"
+                :rating="recipe.rating!"
+                :image="recipe.image!"
+                :tags="recipe.tags!"
+                :recipe-id="recipe.id!"
+              />
+            </v-col>
+          </v-row>
+        </div>
+      </div>
       <v-card v-intersect="infiniteScroll" variant="flat" />
     </div>
     <v-fade-transition>
@@ -175,10 +244,13 @@
 
 <script setup lang="ts">
 import { useThrottleFn } from "@vueuse/core";
+import { useDisplay } from "vuetify";
 import RecipeCard from "./RecipeCard.vue";
 import RecipeCardMobile from "./RecipeCardMobile.vue";
 import { useLoggedInState } from "~/composables/use-logged-in-state";
 import { useLazyRecipes } from "~/composables/recipes";
+import { useMealieAuth } from "~/composables/use-mealie-auth";
+import { useScrollPosition } from "~/composables/use-utils";
 import type { Recipe } from "~/lib/api/types/recipe";
 import { useUserSortPreferences } from "~/composables/use-users/preferences";
 import type { RecipeSearchQuery } from "~/lib/api/user/recipes/recipe";
@@ -194,6 +266,7 @@ interface Props {
   singleColumn?: boolean;
   recipes?: Recipe[];
   query?: RecipeSearchQuery | null;
+  groupBy?: string;
 }
 const props = withDefaults(defineProps<Props>(), {
   disableToolbar: false,
@@ -203,6 +276,7 @@ const props = withDefaults(defineProps<Props>(), {
   singleColumn: false,
   recipes: () => [],
   query: null,
+  groupBy: "",
 });
 
 const emit = defineEmits<{
@@ -228,9 +302,111 @@ const NULLS_LAST_ORDER_BY = ["total_time_seconds"];
 
 const auth = useMealieAuth();
 const { $globals } = useNuxtApp();
+const i18n = useI18n();
 const { isOwnGroup } = useLoggedInState();
 const useMobileCards = computed(() => {
   return display.smAndDown.value || preferences.value.useMobileCards;
+});
+
+interface RecipeGroup {
+  key: string;
+  name: string;
+  icon?: string;
+  recipes: Recipe[];
+}
+
+const groupedRecipes = computed<RecipeGroup[]>(() => {
+  if (!props.groupBy || !props.recipes || props.recipes.length === 0) {
+    return [];
+  }
+
+  const groupMap = new Map<string, RecipeGroup>();
+  let noneGroup: RecipeGroup | null = null;
+
+  function getOrCreateGroup(key: string, name: string, icon?: string): RecipeGroup {
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { key, name, icon, recipes: [] });
+    }
+    return groupMap.get(key)!;
+  }
+
+  function getOrCreateNoneGroup(name: string, icon?: string): RecipeGroup {
+    if (!noneGroup) {
+      noneGroup = { key: "__none__", name, icon, recipes: [] };
+    }
+    return noneGroup;
+  }
+
+  const criterion = props.groupBy.toLowerCase();
+
+  for (const recipe of props.recipes) {
+    if (criterion === "category") {
+      const categories = recipe.recipeCategory || (recipe as any).recipe_category;
+      if (categories && categories.length > 0) {
+        for (const cat of categories) {
+          const catName = cat.name || cat.slug || cat.id || i18n.t("general.none");
+          const group = getOrCreateGroup(cat.id || catName, catName, $globals.icons.categories);
+          group.recipes.push(recipe);
+        }
+      }
+      else {
+        const group = getOrCreateNoneGroup(i18n.t("general.uncategorized-recipes"), $globals.icons.categories);
+        group.recipes.push(recipe);
+      }
+    }
+    else if (criterion === "tag") {
+      const tags = recipe.tags;
+      if (tags && tags.length > 0) {
+        for (const tag of tags) {
+          const tagName = tag.name || tag.slug || tag.id || i18n.t("general.none");
+          const group = getOrCreateGroup(tag.id || tagName, tagName, $globals.icons.tags);
+          group.recipes.push(recipe);
+        }
+      }
+      else {
+        const group = getOrCreateNoneGroup(i18n.t("general.untagged-recipes"), $globals.icons.tags);
+        group.recipes.push(recipe);
+      }
+    }
+    else if (criterion === "tool") {
+      const tools = recipe.tools;
+      if (tools && tools.length > 0) {
+        for (const tool of tools) {
+          const toolName = tool.name || tool.slug || tool.id || i18n.t("general.none");
+          const group = getOrCreateGroup(tool.id || toolName, toolName, $globals.icons.potSteam);
+          group.recipes.push(recipe);
+        }
+      }
+      else {
+        const group = getOrCreateNoneGroup(i18n.t("general.no-tools"), $globals.icons.potSteam);
+        group.recipes.push(recipe);
+      }
+    }
+    else if (criterion === "food") {
+      const foods = (recipe as any).foods;
+      if (foods && foods.length > 0) {
+        for (const food of foods) {
+          const foodName = food.name || food.id || i18n.t("general.none");
+          const group = getOrCreateGroup(food.id || foodName, foodName, $globals.icons.foods);
+          group.recipes.push(recipe);
+        }
+      }
+      else {
+        const group = getOrCreateNoneGroup(i18n.t("general.no-foods"), $globals.icons.foods);
+        group.recipes.push(recipe);
+      }
+    }
+  }
+
+  const sortedGroups = Array.from(groupMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  );
+
+  if (noneGroup) {
+    sortedGroups.push(noneGroup);
+  }
+
+  return sortedGroups;
 });
 
 const displayTitleIcon = computed(() => {

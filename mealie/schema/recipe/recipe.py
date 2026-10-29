@@ -197,6 +197,7 @@ class RecipeSummary(MealieModel):
     recipe_category: Annotated[list[RecipeCategory] | None, Field(validate_default=True)] = []
     tags: Annotated[list[RecipeTag] | None, Field(validate_default=True)] = []
     tools: list[RecipeTool] = []
+    foods: list[IngredientFoodSummary] = []
     rating: float | None = None
     org_url: str | None = Field(None, alias="orgURL")
 
@@ -234,6 +235,7 @@ class RecipeSummary(MealieModel):
             joinedload(RecipeModel.recipe_category),
             joinedload(RecipeModel.tags),
             joinedload(RecipeModel.tools),
+            selectinload(RecipeModel.recipe_ingredient).joinedload(RecipeIngredientModel.food),
             joinedload(RecipeModel.user).load_only(User.household_id),
         ]
 
@@ -484,7 +486,7 @@ class RecipeLastMade(BaseModel):
     timestamp: datetime.datetime
 
 
-from mealie.schema.recipe.recipe_ingredient import RecipeIngredient  # noqa: E402
+from mealie.schema.recipe.recipe_ingredient import IngredientFoodSummary, RecipeIngredient  # noqa: E402
 
 RecipeSummary.model_rebuild()
 Recipe.model_rebuild()

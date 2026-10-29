@@ -26,6 +26,7 @@ interface RecipeExplorerSearchState {
     search: string;
     orderBy: string;
     orderDirection: "asc" | "desc";
+    groupBy: string;
     requireAllCategories: boolean;
     requireAllTags: boolean;
     requireAllTools: boolean;
@@ -42,6 +43,7 @@ interface RecipeExplorerSearchState {
   reset: () => void;
   toggleOrderDirection: () => void;
   setOrderBy: (value: string) => void;
+  setGroupBy: (value: string) => void;
   setRandomOrderBy: () => void;
   filterItems: (item: RecipeCategory | RecipeTag | RecipeTool, urlPrefix: string) => void;
   initialize: () => Promise<void>;
@@ -65,6 +67,7 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
     search: "",
     orderBy: "created_at",
     orderDirection: "desc" as "asc" | "desc",
+    groupBy: "",
     requireAllCategories: false,
     requireAllTags: false,
     requireAllTools: false,
@@ -91,6 +94,7 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
     search: "",
     orderBy: "created_at",
     orderDirection: "desc" as "asc" | "desc",
+    groupBy: "",
     requireAllCategories: false,
     requireAllTags: false,
     requireAllTools: false,
@@ -182,6 +186,7 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
     state.value.search = queryDefaults.search;
     state.value.orderBy = queryDefaults.orderBy;
     state.value.orderDirection = queryDefaults.orderDirection;
+    state.value.groupBy = queryDefaults.groupBy;
     sortPreferences.value.orderBy = queryDefaults.orderBy;
     sortPreferences.value.orderDirection = queryDefaults.orderDirection;
     state.value.requireAllCategories = queryDefaults.requireAllCategories;
@@ -209,6 +214,10 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
     sortPreferences.value.orderBy = value;
   }
 
+  function setGroupBy(value: string) {
+    state.value.groupBy = value;
+  }
+
   async function search() {
     const oldQueryValueString = JSON.stringify(passedQuery.value);
     const newQueryValue = calcPassedQuery();
@@ -227,6 +236,7 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
       ...{
         auto: state.value.auto ? undefined : "false",
         search: passedQuery.value.search === queryDefaults.search ? undefined : passedQuery.value.search,
+        groupBy: state.value.groupBy === queryDefaults.groupBy ? undefined : state.value.groupBy,
         households: !passedQuery.value.households?.length || passedQuery.value.households?.length === households.store.value.length ? undefined : passedQuery.value.households,
         requireAllCategories: passedQuery.value.requireAllCategories ? "true" : undefined,
         requireAllTags: passedQuery.value.requireAllTags ? "true" : undefined,
@@ -268,6 +278,13 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
 
     state.value.orderBy = sortPreferences.value.orderBy;
     state.value.orderDirection = sortPreferences.value.orderDirection as "asc" | "desc";
+
+    if (query.groupBy?.length) {
+      state.value.groupBy = query.groupBy as string;
+    }
+    else {
+      state.value.groupBy = queryDefaults.groupBy;
+    }
 
     if (query.requireAllCategories?.length) {
       state.value.requireAllCategories = query.requireAllCategories === "true";
@@ -421,6 +438,7 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
   watchDebounced(
     [
       () => state.value.search,
+      () => state.value.groupBy,
       () => state.value.requireAllCategories,
       () => state.value.requireAllTags,
       () => state.value.requireAllTools,
@@ -460,6 +478,7 @@ function createRecipeExplorerSearchState(groupSlug: ComputedRef<string>): Recipe
     reset,
     toggleOrderDirection,
     setOrderBy,
+    setGroupBy,
     setRandomOrderBy,
     filterItems,
     initialize,

@@ -1,5 +1,5 @@
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
@@ -14,7 +14,7 @@ from sqlalchemy.orm.session import object_session
 from mealie.db.models._model_utils.auto_init import auto_init
 from mealie.db.models._model_utils.datetime import NaiveDateTime, get_utc_today
 from mealie.db.models._model_utils.guid import GUID
-from mealie.db.models.recipe.ingredient import RecipeIngredientModel
+from mealie.db.models.recipe.ingredient import IngredientFoodModel, RecipeIngredientModel
 
 from .._model_base import BaseMixins, FilterableColumn, SqlAlchemyBase
 from ..household.household_to_recipe import HouseholdToRecipe
@@ -114,6 +114,21 @@ class RecipeModel(SqlAlchemyBase, BaseMixins):
         foreign_keys="RecipeIngredientModel.referenced_recipe_id",
         back_populates="referenced_recipe",
     )
+
+    @property
+    def foods(self) -> list[IngredientFoodModel]:
+        foods: list[IngredientFoodModel] = []
+        seen: set[Any] = set()
+        for ingredient in self.recipe_ingredient:
+            if ingredient.food and ingredient.food.id not in seen:
+                seen.add(ingredient.food.id)
+                foods.append(ingredient.food)
+        return foods
+
+    @foods.setter
+    def foods(self, value: Any) -> None:
+        pass
+
     recipe_instructions: Mapped[list[RecipeInstruction]] = orm.relationship(
         "RecipeInstruction",
         cascade="all, delete-orphan",
@@ -169,6 +184,7 @@ class RecipeModel(SqlAlchemyBase, BaseMixins):
         get_attr="slug",
         exclude={
             "assets",
+            "foods",
             "notes",
             "nutrition",
             "recipe_ingredient",

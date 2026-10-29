@@ -105,6 +105,7 @@ export interface RecipeSummary {
   recipeCategory?: RecipeCategory[] | null;
   tags?: RecipeTag[] | null;
   tools?: RecipeTool[];
+  foods?: IngredientFoodSummary[];
   rating?: number | null;
   orgURL?: string | null;
   dateAdded?: string | null;
@@ -133,6 +134,11 @@ export interface RecipeTool {
   slug: string;
   recipeCount?: number;
   householdsWithTool?: string[];
+}
+export interface IngredientFoodSummary {
+  id: string;
+  name: string;
+  pluralName?: string | null;
 }
 export interface SavePlanEntry {
   date: string;

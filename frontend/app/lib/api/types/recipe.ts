@@ -279,6 +279,7 @@ export interface Recipe {
   recipeCategory?: RecipeCategory[] | null;
   tags?: RecipeTag[] | null;
   tools?: RecipeTool[];
+  foods?: IngredientFoodSummary[];
   rating?: number | null;
   orgURL?: string | null;
   dateAdded?: string | null;
@@ -379,6 +380,7 @@ export interface RecipeSummary {
   recipeCategory?: RecipeCategory[] | null;
   tags?: RecipeTag[] | null;
   tools?: RecipeTool[];
+  foods?: IngredientFoodSummary[];
   rating?: number | null;
   orgURL?: string | null;
   dateAdded?: string | null;
@@ -424,6 +426,7 @@ export interface RecipeIn {
   recipeCategory?: RecipeCategoryIn[] | null;
   tags?: RecipeTagIn[] | null;
   tools?: RecipeToolIn[];
+  foods?: IngredientFoodSummary[];
   rating?: number | null;
   orgURL?: string | null;
   dateAdded?: string | null;
